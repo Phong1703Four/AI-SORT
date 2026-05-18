@@ -3,7 +3,8 @@
     "dashboard": "Bảng Điều Khiển",
     "games": "Trò Chơi",
     "shop": "Cửa Hàng",
-    "openApp": "Mở Ứng Dụng"
+    "openApp": "Mở Ứng Dụng",
+    "edu": "Thư Viện"
   },
   "dashboard": {
     "title": "Biến Rác Thải",
@@ -71,7 +72,23 @@
     "catcherTitle": "Hứng Rác",
     "catcherDesc": "Rác rơi từ trên xuống, chọn đúng thùng để hứng! Bạn có 5 mạng.",
     "scrambleTitle": "Giải Mã Từ Khóa",
-    "scrambleDesc": "Các chữ cái bị xáo trộn - giải mã từ khóa môi trường!"
+    "scrambleDesc": "Các chữ cái bị xáo trộn - giải mã từ khóa môi trường!",
+    "ecolabTitle": "Phòng Thí Nghiệm",
+    "ecolabDesc": "Xử lý rác phức tạp hoặc bị ô nhiễm bằng công cụ phòng thí nghiệm hiện đại!",
+    "ecolab.title": "Phòng Thí Nghiệm Sinh Thái",
+    "ecolab.desc": "Xử lý các loại chất thải phức tạp, ô nhiễm hoặc hỗn hợp bằng công cụ chuyên dụng trước khi phân loại.",
+    "ecolab.items.milkCarton": "Hộp Sữa Bẩn",
+    "ecolab.items.pizzaBox": "Hộp Pizza Bám Dầu Mỡ",
+    "ecolab.items.cleanPaper": "Bìa Giấy Sạch",
+    "ecolab.items.greasyLeftover": "Vỏ Pizza Dầu Mỡ",
+    "ecolab.items.thermometer": "Nhiệt Kế Thủy Ngân Hỏng",
+    "ecolab.items.coffeeCup": "Ly Cà Phê Nhiều Lớp",
+    "ecolab.items.plasticLid": "Nắp Nhựa",
+    "ecolab.items.paperSleeve": "Bọc Giấy",
+    "ecolab.items.waxedCup": "Ly Giấy Tráng Sáp",
+    "ecolab.items.phone": "Điện Thoại Cũ Hỏng",
+    "ecolab.items.lithiumBattery": "Pin Lithium",
+    "ecolab.items.metalCasing": "Vỏ Kim Loại"
   },
   "wasteData": {
     "organicDesc": "là rác hữu cơ, có khả năng phân hủy sinh học tự nhiên. Rất tốt để ủ phân compost bón cho cây trồng.",

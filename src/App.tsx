@@ -77,7 +77,7 @@ function App() {
                   {t('dashboard.subtitle')}
                 </p>
                 
-                <UploadCard />
+                <UploadCard setInventory={setInventory} />
               </div>
               <DashboardStats />
               <EcoChallenges inventory={inventory} setInventory={setInventory} />
@@ -110,7 +110,7 @@ function App() {
             </motion.div>
           )}
 
-          {activeTab === 'Học Tập' && (
+          {activeTab === 'edu' && (
             <motion.div
               key="edu"
               initial={{ opacity: 0, x: 50 }}

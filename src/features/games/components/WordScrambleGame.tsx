@@ -58,7 +58,7 @@ export const WordScrambleGame = ({ setInventory }: WordScrambleGameProps) => {
     setShowHint(false);
     setAnswered(false);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [idx, language]);
+  }, [idx, language, correctWord]);
 
   const checkAnswer = () => {
     if (answered) return;

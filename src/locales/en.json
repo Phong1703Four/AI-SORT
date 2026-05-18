@@ -3,7 +3,8 @@
     "dashboard": "Dashboard",
     "games": "Games Hub",
     "shop": "Eco Shop",
-    "openApp": "Open App"
+    "openApp": "Open App",
+    "edu": "Eco Library"
   },
   "dashboard": {
     "title": "Turn Waste Into",
@@ -71,7 +72,23 @@
     "catcherTitle": "Waste Catcher",
     "catcherDesc": "Waste falls from the sky! Tap the right bin to catch it. 5 lives!",
     "scrambleTitle": "Word Scramble",
-    "scrambleDesc": "Unscramble the letters to reveal environmental keywords!"
+    "scrambleDesc": "Unscramble the letters to reveal environmental keywords!",
+    "ecolabTitle": "Eco Lab",
+    "ecolabDesc": "Treat complex or contaminated waste using high-tech laboratory tools!",
+    "ecolab.title": "Eco Laboratory",
+    "ecolab.desc": "Treat complex, contaminated, or composite waste items using specialized lab tools before sorting.",
+    "ecolab.items.milkCarton": "Dirty Milk Carton",
+    "ecolab.items.pizzaBox": "Greasy Pizza Box",
+    "ecolab.items.cleanPaper": "Clean Cardboard",
+    "ecolab.items.greasyLeftover": "Greasy Pizza Leftover",
+    "ecolab.items.thermometer": "Broken Thermometer",
+    "ecolab.items.coffeeCup": "Composite Coffee Cup",
+    "ecolab.items.plasticLid": "Plastic Lid",
+    "ecolab.items.paperSleeve": "Paper Sleeve",
+    "ecolab.items.waxedCup": "Waxed Paper Cup",
+    "ecolab.items.phone": "Old Smartphone",
+    "ecolab.items.lithiumBattery": "Lithium Battery",
+    "ecolab.items.metalCasing": "Metal Casing"
   },
   "wasteData": {
     "organicDesc": "is organic waste, naturally biodegradable. Great for composting to fertilize plants.",

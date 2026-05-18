@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Leaf, Menu, X, BarChart2, Target, Gamepad2, Sun, Moon, Globe } from 'lucide-react';
+import { Leaf, Menu, X, BarChart2, Target, Gamepad2, Sun, Moon, Globe, BookOpen } from 'lucide-react';
 import { useTranslation } from '../../context/LanguageContext';
 
 export interface Inventory {
@@ -39,6 +39,7 @@ export const Navbar = ({ activeTab = 'dashboard', setActiveTab = () => {}, inven
     { id: 'dashboard', name: t('nav.dashboard'), icon: BarChart2 },
     { id: 'games', name: t('nav.games'), icon: Gamepad2 },
     { id: 'shop', name: t('nav.shop'), icon: Target },
+    { id: 'edu', name: t('nav.edu'), icon: BookOpen },
   ];
 
   return (

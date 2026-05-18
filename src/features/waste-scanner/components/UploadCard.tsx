@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UploadCloud, Camera, Image as ImageIcon, Sparkles, CheckCircle2, AlertCircle, X, Focus, Grid } from 'lucide-react';
+import { UploadCloud, Camera, Image as ImageIcon, Sparkles, CheckCircle2, AlertCircle, X, Focus, Grid, AlertTriangle } from 'lucide-react';
 import { Card3D } from '../../../shared/animations/Card3D';
 import { useTranslation } from '../../../context/LanguageContext';
 
@@ -80,13 +80,18 @@ const playShutterSound = () => {
   }
 };
 
-export const UploadCard = () => {
+interface UploadCardProps {
+  setInventory?: React.Dispatch<React.SetStateAction<any>>;
+}
+
+export const UploadCard = ({ setInventory }: UploadCardProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const { t, language } = useTranslation();
+  const [corrected, setCorrected] = useState(false);
   
   // Custom camera & scanner states
   const [showGrid, setShowGrid] = useState(false);
@@ -99,6 +104,77 @@ export const UploadCard = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+
+  const handleManualCorrection = (category: 'organic' | 'recycle' | 'inorganic' | 'hazardous') => {
+    if (corrected || !result) return;
+    setCorrected(true);
+    
+    let updatedResult: ScanResult;
+    if (category === 'organic') {
+      updatedResult = {
+        type: t('games.organic'),
+        name: language === 'en' ? 'CORRECTED ITEM (ORGANIC)' : 'VẬT PHẨM SỬA ĐỔI (HỮU CƠ)',
+        confidence: 100.0,
+        color: 'text-brand-green',
+        bgColor: 'bg-brand-green/10',
+        borderColor: 'border-brand-green/30',
+        icon: '🌿',
+        description: language === 'en' ? 'User-corrected organic waste. Thank you for making the environment cleaner!' : 'Rác hữu cơ sinh học do người dùng đính chính. Cảm ơn bạn đã chung tay bảo vệ môi trường!',
+        action: language === 'en' ? '🌿 Use for composting or place in the Organic bin.' : '🌿 Đem đi ủ phân compost bón cây hoặc bỏ vào thùng rác Hữu Cơ.',
+      };
+    } else if (category === 'recycle') {
+      updatedResult = {
+        type: t('games.recycle'),
+        name: language === 'en' ? 'CORRECTED ITEM (RECYCLABLE)' : 'VẬT PHẨM SỬA ĐỔI (TÁI CHẾ)',
+        confidence: 100.0,
+        color: 'text-brand-blue',
+        bgColor: 'bg-brand-blue/10',
+        borderColor: 'border-brand-blue/30',
+        icon: '♻️',
+        description: language === 'en' ? 'User-corrected recyclable material. Saving resources starts here!' : 'Rác tái chế do người dùng đính chính. Tiết kiệm tài nguyên bắt đầu từ đây!',
+        action: language === 'en' ? '♻️ Clean, crush, and place in the Recycle bin.' : '♻️ Súc rửa sạch, để khô và bỏ vào thùng rác Tái Chế.',
+      };
+    } else if (category === 'hazardous') {
+      updatedResult = {
+        type: t('games.hazardous'),
+        name: language === 'en' ? 'CORRECTED ITEM (HAZARDOUS)' : 'VẬT PHẨM SỬA ĐỔI (NGUY HẠI)',
+        confidence: 100.0,
+        color: 'text-red-500',
+        bgColor: 'bg-red-500/10',
+        borderColor: 'border-red-500/30',
+        icon: '⚠️',
+        description: language === 'en' ? 'User-corrected hazardous waste. Safe handling keeps communities clean!' : 'Rác nguy hại do người dùng đính chính. Xử lý an toàn giúp bảo vệ cộng đồng!',
+        action: language === 'en' ? '⚠️ Take to specialized hazardous or e-waste collection points.' : '⚠️ Mang tới các điểm thu gom rác thải nguy hại hoặc rác điện tử.',
+      };
+    } else {
+      updatedResult = {
+        type: t('games.inorganic'),
+        name: language === 'en' ? 'CORRECTED ITEM (INORGANIC)' : 'VẬT PHẨM SỬA ĐỔI (VÔ CƠ)',
+        confidence: 100.0,
+        color: 'text-amber-500',
+        bgColor: 'bg-amber-500/10',
+        borderColor: 'border-amber-500/30',
+        icon: '🗑️',
+        description: language === 'en' ? 'User-corrected inorganic waste. Landfill minimization is crucial!' : 'Rác vô cơ do người dùng đính chính. Giảm thiểu chôn lấp là vô cùng quan trọng!',
+        action: language === 'en' ? '🗑️ Reduce single-use items. Put in the Inorganic bin.' : '🗑️ Tiết giảm đồ dùng một lần. Bỏ vào thùng rác Vô Cơ.',
+      };
+    }
+    
+    setResult(updatedResult);
+    
+    if (setInventory) {
+      setInventory(prev => ({
+        ...prev,
+        [category]: prev[category] + 2
+      }));
+    }
+  };
+
+  const resetScanner = () => {
+    setResult(null);
+    setPreviewSrc(null);
+    setCorrected(false);
+  };
 
 
   // Dọn dẹp stream khi unmount
@@ -596,6 +672,47 @@ export const UploadCard = () => {
 
                 {/* Result Body */}
                 <div className="p-6 md:p-8 space-y-6 bg-slate-950/50 backdrop-blur-md">
+                  {Number(result.confidence) < 20 && !corrected && (
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-left">
+                      <div className="flex gap-2 items-center text-amber-500 font-bold text-sm mb-2">
+                        <AlertTriangle className="w-5 h-5 animate-pulse" />
+                        {language === 'en' ? 'LOW CONFIDENCE AI DETECTION' : 'ĐỘ TIN CẬY NHẬN DIỆN THẤP'}
+                      </div>
+                      <p className="text-slate-300 text-xs mb-4">
+                        {language === 'en' 
+                          ? 'The Edge AI is not fully confident about this item. Please select the correct category below to train our model and earn a +2 Resource bonus!'
+                          : 'Trí tuệ nhân tạo không hoàn toàn chắc chắn về rác thải này. Vui lòng chọn nhóm đúng bên dưới để hỗ trợ huấn luyện AI và nhận +2 Tài nguyên thưởng!'}
+                      </p>
+                      
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <button 
+                          onClick={() => handleManualCorrection('organic')}
+                          className="px-3 py-2 bg-brand-green/20 hover:bg-brand-green/30 border border-brand-green/30 rounded-xl text-brand-green font-bold text-xs transition-all uppercase"
+                        >
+                          🌿 {t('games.organic')}
+                        </button>
+                        <button 
+                          onClick={() => handleManualCorrection('recycle')}
+                          className="px-3 py-2 bg-brand-blue/20 hover:bg-brand-blue/30 border border-brand-blue/30 rounded-xl text-brand-blue font-bold text-xs transition-all uppercase"
+                        >
+                          ♻️ {t('games.recycle')}
+                        </button>
+                        <button 
+                          onClick={() => handleManualCorrection('inorganic')}
+                          className="px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 rounded-xl text-amber-500 font-bold text-xs transition-all uppercase"
+                        >
+                          🗑️ {t('games.inorganic')}
+                        </button>
+                        <button 
+                          onClick={() => handleManualCorrection('hazardous')}
+                          className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-xl text-red-500 font-bold text-xs transition-all uppercase"
+                        >
+                          ⚠️ {t('games.hazardous')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <h4 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4" /> {t('scanner.details')}
@@ -616,7 +733,7 @@ export const UploadCard = () => {
 
                   <div className="pt-4 flex justify-end">
                     <button 
-                      onClick={() => { setResult(null); setPreviewSrc(null); }}
+                      onClick={resetScanner}
                       className="px-6 py-2.5 rounded-full bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-900 dark:text-white font-bold transition-colors text-sm"
                     >
                       {t('scanner.scanAnother')}

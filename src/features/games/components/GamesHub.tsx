@@ -7,12 +7,13 @@ import { TrueFalseGame } from './TrueFalseGame';
 import { MemoryMatchGame } from './MemoryMatchGame';
 import { WasteCatcherGame } from './WasteCatcherGame';
 import { WordScrambleGame } from './WordScrambleGame';
-import { Gamepad2, BrainCircuit, Zap, ThumbsUp, Layers, Target, Type, ArrowLeft } from 'lucide-react';
+import { EcoLabGame } from './EcoLabGame';
+import { Gamepad2, BrainCircuit, Zap, ThumbsUp, Layers, Target, Type, ArrowLeft, Beaker } from 'lucide-react';
 import { useTranslation } from '../../../context/LanguageContext';
 
 import type { Inventory } from '../../../App';
 
-type GameId = 'hub' | 'classic' | 'quiz' | 'speedsort' | 'truefalse' | 'memory' | 'catcher' | 'scramble';
+type GameId = 'hub' | 'classic' | 'quiz' | 'speedsort' | 'truefalse' | 'memory' | 'catcher' | 'scramble' | 'ecolab';
 
 interface GamesHubProps {
   setInventory: React.Dispatch<React.SetStateAction<Inventory>>;
@@ -33,6 +34,8 @@ const GAME_CARDS = [
     iconBg: 'bg-teal-500/15', iconBorder: 'border-teal-500/20', iconColor: 'text-teal-500', glow: 'bg-teal-500/15', glowHover: 'group-hover:bg-teal-500/30', hoverBorder: 'hover:border-teal-500/50', btnBg: 'bg-teal-500/10', btnText: 'text-teal-500', btnHoverBg: 'group-hover:bg-teal-500', btnHoverText: 'group-hover:text-white' },
   { id: 'scramble' as GameId, icon: Type, titleKey: 'games.scrambleTitle', descKey: 'games.scrambleDesc', btnKey: 'games.tryNow',
     iconBg: 'bg-violet-500/15', iconBorder: 'border-violet-500/20', iconColor: 'text-violet-500', glow: 'bg-violet-500/15', glowHover: 'group-hover:bg-violet-500/30', hoverBorder: 'hover:border-violet-500/50', btnBg: 'bg-violet-500/10', btnText: 'text-violet-500', btnHoverBg: 'group-hover:bg-violet-500', btnHoverText: 'group-hover:text-white' },
+  { id: 'ecolab' as GameId, icon: Beaker, titleKey: 'games.ecolabTitle', descKey: 'games.ecolabDesc', btnKey: 'games.playNow',
+    iconBg: 'bg-emerald-500/15', iconBorder: 'border-emerald-500/20', iconColor: 'text-emerald-500', glow: 'bg-emerald-500/15', glowHover: 'group-hover:bg-emerald-500/30', hoverBorder: 'hover:border-emerald-500/50', btnBg: 'bg-emerald-500/10', btnText: 'text-emerald-500', btnHoverBg: 'group-hover:bg-emerald-500', btnHoverText: 'group-hover:text-white' },
 ];
 
 export const GamesHub = ({ setInventory }: GamesHubProps) => {
@@ -48,6 +51,7 @@ export const GamesHub = ({ setInventory }: GamesHubProps) => {
       case 'memory': return <MemoryMatchGame setInventory={setInventory} />;
       case 'catcher': return <WasteCatcherGame setInventory={setInventory} />;
       case 'scramble': return <WordScrambleGame setInventory={setInventory} />;
+      case 'ecolab': return <EcoLabGame setInventory={setInventory} />;
       default: return null;
     }
   };
