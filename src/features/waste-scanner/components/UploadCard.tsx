@@ -59,23 +59,60 @@ export const UploadCard = () => {
   // Dọn dẹp stream khi unmount
   useEffect(() => {
     return () => {
-      stopCamera();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
     };
-  }, []);
+  }, [stream]);
+
+  // Khi stream thay đổi và video element đã mount, gán srcObject
+  useEffect(() => {
+    if (stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch((err) => {
+        console.warn('Video play failed:', err);
+      });
+    }
+  }, [stream, isCameraActive]);
 
   const startCamera = async () => {
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment" } 
-      });
-      setStream(mediaStream);
-      setIsCameraActive(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
+      // Dừng stream cũ nếu có
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
       }
-    } catch (err) {
+
+      const constraints: MediaStreamConstraints = {
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      };
+
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      // Bật camera view TRƯỚC, sau đó set stream → useEffect sẽ gán srcObject
+      setIsCameraActive(true);
+      // Dùng setTimeout nhỏ để đảm bảo React đã render video element
+      setTimeout(() => {
+        setStream(mediaStream);
+      }, 50);
+    } catch (err: any) {
       console.error("Camera access denied or not available", err);
-      alert("Không thể truy cập camera. Vui lòng kiểm tra quyền truy cập!");
+      const msg = err?.name === 'NotAllowedError'
+        ? (language === 'en' 
+          ? 'Camera permission denied. Please allow camera access in your browser settings.' 
+          : 'Quyền truy cập camera bị từ chối. Vui lòng cho phép trong cài đặt trình duyệt!')
+        : err?.name === 'NotFoundError'
+        ? (language === 'en'
+          ? 'No camera found on this device.'
+          : 'Không tìm thấy camera trên thiết bị này.')
+        : (language === 'en'
+          ? 'Unable to access camera. Please check permissions!'
+          : 'Không thể truy cập camera. Vui lòng kiểm tra quyền truy cập!');
+      alert(msg);
     }
   };
 
@@ -84,6 +121,9 @@ export const UploadCard = () => {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     setIsCameraActive(false);
   };
 
@@ -91,12 +131,19 @@ export const UploadCard = () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+
+      // Đảm bảo video đã sẵn sàng
+      if (video.readyState < 2) {
+        console.warn('Video not ready yet');
+        return;
+      }
+
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageUrl = canvas.toDataURL('image/jpeg');
+        const imageUrl = canvas.toDataURL('image/jpeg', 0.9);
         stopCamera();
         processImage(imageUrl);
       }
@@ -292,8 +339,6 @@ export const UploadCard = () => {
                 </button>
               </div>
             </div>
-            {/* Hidden image element for AI to read */}
-            <img ref={imgRef} alt="hidden" className="hidden" />
           </motion.div>
         )}
 
@@ -307,7 +352,8 @@ export const UploadCard = () => {
             <video 
               ref={videoRef}
               autoPlay 
-              playsInline 
+              playsInline
+              muted
               className="w-full h-full object-cover"
             />
             <canvas ref={canvasRef} className="hidden" />
@@ -460,6 +506,8 @@ export const UploadCard = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Hidden image element for AI to read */}
+      <img ref={imgRef} alt="hidden" className="hidden" />
     </div>
   );
 };
