@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Sort - Phân Loại Rác Thông Minh</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet">
+
+    
+
+    <!-- MARKDOWN & HIGHLIGHT JS CHO CHATBOT -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/monokai-sublime.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="theme-spring">
+    <div class="season-flash" id="seasonFlash"></div>
+    <div class="bg-particles" id="bgParticles"></div>
+    <canvas id="confettiCanvas"></canvas>
+
+    <header>
+        <div class="header-top">
+            <div>
+                <h1>AI SORT ♻️</h1>
+                <div class="season-badge" id="seasonBadge">🌸 Mùa Xuân (Lv 1 - 10)</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+                <div class="actions-group">
+                    <div class="coin-box" id="afkBox" onclick="openAFK()" style="cursor:pointer" title="Nhận quỹ AFK">⏳ +<span id="afkCoinCount">...</span>/ph</div>
+                    <div class="coin-box">🟡 <span id="coinCount">0</span></div>
+                    <button class="shop-btn" onclick="openLoginModal()">👤 Đăng Nhập</button>
+                    <button class="shop-btn" onclick="openLeaderboardModal()">🏆 BXH</button>
+                    <button class="shop-btn" onclick="startEcoRush()">🎮 Eco Rush</button>
+                    <button class="shop-btn" onclick="startTimeAttack()">⏱️ Thử Thách</button>
+                    <button class="shop-btn" onclick="openQuiz()">🧠 Đố Vui</button>
+                    <button class="shop-btn" onclick="openShop()">🛒 Cửa Hàng</button>
+                    <button class="shop-btn" onclick="openEcoShop()">🛒 Sinh Thái</button>
+                    <button class="shop-btn" onclick="openProfile()">🏆 Hồ Sơ</button>
+                </div>
+            </div>
+            </div>
+
+        <div class="top-dashboard">
+            <div class="level-container">
+                <div class="level-badge" id="levelBadge">1</div>
+                <div class="xp-bar-container">
+                    <div class="xp-bar" id="xpBar"></div>
+                </div>
+            </div>
+            <div class="stat-box">⭐ Điểm: <span id="score">0</span></div>
+            <div class="stat-box">🔥 Combo: <span id="streak">0</span></div>
+        </div>
+    </header>
+
+    <!-- TRASHQUEST MINIGAME OVERLAY -->
+    <div id="adventureContainer">
+        <!-- Lớp hiển thị UI -->
+        <div class="adventure-hud">
+            <div class="hud-left">
+                <button class="hud-btn" onclick="exitTrashQuest()">✕ Thoát</button>
+                <div class="hp-bar-container">
+                    <div class="hp-bar-fill" id="tqHealthBar"></div>
+                    <div class="hp-text" id="tqHealthText">100 / 100 HP</div>
+                </div>
+            </div>
+            <div class="hud-right">
+                <div class="hud-coin">🟡 <span id="tqCoinCount">0</span></div>
+                <button class="hud-btn" onclick="openShop()">🛒 Shop</button>
+            </div>
+        </div>
+
+        <div class="obj-toast" id="tqObjective">Mục tiêu: Dọn sạch 8 rác trên bản đồ! (0/8)</div>
+
+        <!-- Bàn Phím Ảo (Chỉ hiện Mobile) -->
+        <div class="mobile-controls">
+            <!-- Khu Joystick Trái -->
+            <div class="joystick-zone" id="joystickZone">
+                <div class="joystick-knob" id="joystickKnob"></div>
+            </div>
+            <!-- Khu Nút Hành Động Phải -->
+            <div class="action-buttons">
+                <div class="action-btn skill" id="btnSkill">
+                    <span>⚡ (F)</span>
+                    <div class="skill-cooldown" id="btnSkillCd"></div>
+                </div>
+                <div class="action-btn" id="btnInteract">💚 (I)</div>
+                <div class="action-btn attack" id="btnAttack">⚔️ (J)</div>
+            </div>
+        </div>
+
+        <!-- HỆ THỐNG TÚI PHÂN LOẠI RÁC -->
+        <div id="bagInventory" style="
+            position: absolute; bottom: 140px; left: 50%; transform: translateX(-50%);
+            display: none; gap: 10px; z-index: 15; pointer-events: none;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(10px);
+            padding: 12px 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15);
+        ">
+            <div class="sort-bag" id="bag-organic" style="text-align:center;">
+                <div style="width:50px;height:55px;background:linear-gradient(180deg,#22c55e,#15803d);border-radius:8px 8px 12px 12px;display:flex;align-items:center;justify-content:center;font-size:24px;border:2px solid #4ade80;position:relative;box-shadow:0 4px 12px rgba(34,197,94,0.4);">
+                    🌿
+                    <span id="bagCount-organic" style="position:absolute;top:-8px;right:-8px;background:#ef4444;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center;">0</span>
+                </div>
+                <div style="font-size:8px;color:#4ade80;font-weight:bold;margin-top:4px;">HỮU CƠ</div>
+            </div>
+            <div class="sort-bag" id="bag-recycle" style="text-align:center;">
+                <div style="width:50px;height:55px;background:linear-gradient(180deg,#3b82f6,#1d4ed8);border-radius:8px 8px 12px 12px;display:flex;align-items:center;justify-content:center;font-size:24px;border:2px solid #60a5fa;position:relative;box-shadow:0 4px 12px rgba(59,130,246,0.4);">
+                    ♻️
+                    <span id="bagCount-recycle" style="position:absolute;top:-8px;right:-8px;background:#ef4444;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center;">0</span>
+                </div>
+                <div style="font-size:8px;color:#60a5fa;font-weight:bold;margin-top:4px;">TÁI CHẾ</div>
+            </div>
+            <div class="sort-bag" id="bag-inorganic" style="text-align:center;">
+                <div style="width:50px;height:55px;background:linear-gradient(180deg,#f59e0b,#b45309);border-radius:8px 8px 12px 12px;display:flex;align-items:center;justify-content:center;font-size:24px;border:2px solid #fbbf24;position:relative;box-shadow:0 4px 12px rgba(245,158,11,0.4);">
+                    🗑️
+                    <span id="bagCount-inorganic" style="position:absolute;top:-8px;right:-8px;background:#ef4444;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center;">0</span>
+                </div>
+                <div style="font-size:8px;color:#fbbf24;font-weight:bold;margin-top:4px;">VÔ CƠ</div>
+            </div>
+            <div class="sort-bag" id="bag-hazardous" style="text-align:center;">
+                <div style="width:50px;height:55px;background:linear-gradient(180deg,#ef4444,#b91c1c);border-radius:8px 8px 12px 12px;display:flex;align-items:center;justify-content:center;font-size:24px;border:2px solid #f87171;position:relative;box-shadow:0 4px 12px rgba(239,68,68,0.4);">
+                    ☢️
+                    <span id="bagCount-hazardous" style="position:absolute;top:-8px;right:-8px;background:#ef4444;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center;">0</span>
+                </div>
+                <div style="font-size:8px;color:#f87171;font-weight:bold;margin-top:4px;">NGUY HẠI</div>
+            </div>
+        </div>
+        <button id="btnToggleBag" onclick="toggleBagInventory()" style="
+            position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+            background: linear-gradient(135deg, rgba(16,185,129,0.9), rgba(5,150,105,0.9));
+            border: 2px solid #34d399; color: white; padding: 8px 20px;
+            border-radius: 25px; font-weight: bold; font-size: 0.9rem; z-index: 15;
+            cursor: pointer; box-shadow: 0 4px 15px rgba(16,185,129,0.4);
+            backdrop-filter: blur(5px); transition: all 0.2s;
+        ">🎒 Túi Phân Loại</button>
+
+        <!-- Canvas Game Cốt Lõi -->
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <!-- AFK REWARDS MODAL -->
+    <div class="modal-overlay" id="afkModal">
+        <div class="shop-modal" style="max-width: 400px; text-align: center;">
+            <div class="shop-header">
+                <h2>⏳ Quỹ AFK</h2>
+                <button class="close-btn" onclick="closeAFK()">&times;</button>
+            </div>
+            <div class="afk-chest" style="filter: drop-shadow(0 0 20px #fbbf24); margin-bottom: 20px;"></div>
+            <p style="color: #cbd5e1; font-size: 1.1rem; line-height: 1.5; margin-bottom: 20px;">
+                Đội ngũ vệ sinh làm việc cả khi vắng mặt!<br>
+                Tốc độ gốc: <b style="color: #10b981;" id="afkRate">10</b> Xu/phút
+            </p>
+            <div style="font-size: 2.2rem; color: #fbbf24; font-weight: 900; margin-bottom: 20px;">
+                +<span id="afkAccumulated">0</span> x
+            </div>
+            <button class="buy-btn"
+                style="background: linear-gradient(135deg, #10b981, #059669); font-size: 1.2rem; padding: 15px;"
+                onclick="claimAFK()">NHẬN THƯỞNG</button>
+        </div>
+    </div>
+
+    <!-- DAILY QUESTS MODAL -->
+    <div class="modal-overlay" id="questsModal">
+        <div class="shop-modal" style="max-width: 600px;">
+            <div class="shop-header">
+                <h2>📋 Nhiệm Vụ Hàng Ngày</h2>
+                <button class="close-btn" onclick="closeQuests()">&times;</button>
+            </div>
+            <div class="quest-list" id="questListContainer">
+                <!-- Quests generated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- LUCKY WHEEL MODAL -->
+    <div class="modal-overlay" id="wheelModal">
+        <div class="shop-modal" style="max-width: 500px; text-align: center; overflow: hidden; padding-bottom: 30px;">
+            <div class="shop-header">
+                <h2>🎰 Vòng Quay Nhân Phẩm</h2>
+                <button class="close-btn" onclick="closeWheel()">&times;</button>
+            </div>
+            <p style="color: #cbd5e1; font-size: 1.1rem;">Thử vận may! Mỗi lượt quay tốn <b style="color: #fbbf24;">50
+                    x</b></p>
+
+            <div class="wheel-container" id="wheelContainer">
+                <div class="wheel-pointer"></div>
+                <div class="wheel-bg" id="wheelBg">
+                </div>
+            </div>
+
+            <button class="buy-btn" id="btnSpinWheel"
+                style="background: linear-gradient(135deg, #ec4899, #be185d); font-size: 1.3rem; padding: 15px; margin-top: 10px; width: 80%;"
+                onclick="spinWheel()">QUAY NGAY (50 x)</button>
+        </div>
+    </div>
+
+    <main id="mainContainer">
+        <!-- Khu máy quét -->
+        <div class="scanner-area" id="scannerArea">
+            <div class="scanning-text" id="scanningText">SYSTEM SCANNING...</div>
+            <div class="ai-laser" id="aiLaser"></div>
+            <div class="trash-item-container" id="trashItem" draggable="true">♻️</div>
+            <div class="trash-info" id="trashName">Khởi động hệ thống...</div>
+        </div>
+
+        <p class="instruction">Kéo và thả rác vào THÙNG CHUẨN XÁC để nhận Xu Vàng nâng cấp!</p>
+
+        <!-- Thùng -->
+        <div class="bins-container">
+            <div class="bin" data-type="organic" id="bin-organic">
+                <div class="bin-inner-glow"></div>
+                <span class="bin-icon">🌿</span>
+                <div class="bin-title">HỮU CƠ</div>
+                <div class="bin-desc">Thức ăn thừa, rau củ quả mốc, xác thực vật.</div>
+            </div>
+            <div class="bin" data-type="recycle" id="bin-recycle">
+                <div class="bin-inner-glow"></div>
+                <span class="bin-icon">♻️</span>
+                <div class="bin-title">TÁI CHẾ</div>
+                <div class="bin-desc">Giấy, thùng carton, chai nhựa, kim loại.</div>
+            </div>
+            <div class="bin" data-type="inorganic" id="bin-inorganic">
+                <div class="bin-inner-glow"></div>
+                <span class="bin-icon">🗑️</span>
+                <div class="bin-title">VÔ CƠ</div>
+                <div class="bin-desc">Túi nilon bẩn, sành sứ, cao su, xỉ than.</div>
+            </div>
+            <div class="bin" data-type="hazardous" id="bin-hazardous">
+                <div class="bin-inner-glow"></div>
+                <span class="bin-icon">⚠️</span>
+                <div class="bin-title">NGUY HẠI</div>
+                <div class="bin-desc">Pin, hóa chất, bóng đèn thủy ngân.</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- TOAST (Dành cho thông báo ngắn lên cấp/thưởng) -->
+    <div class="feedback" id="feedbackToast">Chính xác!</div>
+
+
+    <!-- ECO RUSH FULLSCREEN ARCADE -->
+    <div id="ecoRushOverlay" class="eco-rush-overlay">
+        <div class="eco-rush-hud">
+            <button class="hud-btn" onclick="exitEcoRush()">✕ Thoát</button>
+            <div class="eco-rush-stats"><span id="erScore">0</span> điểm  <span id="erCombo">0</span> combo</div>
+            <div class="eco-rush-stats">🟡 <span id="erCoins">0</span></div>
+        </div>
+        <div class="er-lives" id="erLives"></div>
+        <canvas id="ecoRushCanvas"></canvas>
+        <div class="eco-rush-bins">
+            <div class="er-bin" data-type="organic" onclick="erCatchBin('organic')"><span>🍏</span><small>Hữu Cơ</small></div>
+            <div class="er-bin" data-type="recycle" onclick="erCatchBin('recycle')"><span>♻️</span><small>Tái Chế</small></div>
+            <div class="er-bin" data-type="inorganic" onclick="erCatchBin('inorganic')"><span>🗑️</span><small>Vô Cơ</small></div>
+            <div class="er-bin" data-type="hazardous" onclick="erCatchBin('hazardous')"><span>⚠️</span><small>Nguy Hại</small></div>
+        </div>
+        <div class="eco-rush-result" id="erResult" style="display:none">
+            <h2 id="erResultTitle">🏆 Kết Quả</h2>
+            <div id="erResultBody"></div>
+            <button class="buy-btn" onclick="exitEcoRush()" style="max-width:280px;margin:15px auto 0">ĐÓNG</button>
+        </div>
+    </div>
+    <!-- QUIZ MODAL (MINI-GAME) -->
+    <div class="modal-overlay" id="quizModal">
+        <div class="shop-modal" style="max-width: 600px; text-align: center;">
+            <div class="shop-header">
+                <h2>🧠 Đố Vui Sinh Thái</h2>
+                <button class="close-btn" onclick="closeQuiz()">&times;</button>
+            </div>
+            <div id="quizContent" style="margin-top: -20px;">
+                <div style="font-size: 60px; filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.4));" id="quizEmoji">🌍
+                </div>
+                <div style="font-size: 1.6rem; font-weight: 900; margin: 20px 0; color: #fff; line-height: 1.4;"
+                    id="quizQuestion">Câu hỏi hiển thị ở đây</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;" id="quizOptions">
+                    <!-- Buttons go here via JS -->
+                </div>
+                <div id="quizFact"
+                    style="margin-top: 25px; font-size: 1.1rem; font-weight: 500; color: #a5b4fc; display: none; background: rgba(0, 0, 0, 0.4); padding: 15px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CỬA HÀNG (SHOP MODAL 4.0 DÀI HƠN) -->
+    <div class="modal-overlay" id="shopModal">
+        <div class="shop-modal">
+            <div class="shop-header"
+                style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 20px;">
+                <h2 style="margin: 0;">🏪 Trạm Tiết Kiệm</h2>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <button class="buy-btn"
+                        style="margin: 0; padding: 8px 15px; font-size: 1rem; background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);"
+                        onclick="closeShop()">🧠 Trang Chủ</button>
+                    <button
+                        style="background: none; border: none; font-size: 2rem; color: #94a3b8; cursor: pointer; line-height: 1;"
+                        onclick="closeShop()">&times;</button>
+                </div>
+            </div>
+            <div class="shop-items">
+                <div class="item-card">
+                    <div class="item-img"></div>
+                    <h3>Khay Mặc Định</h3>
+                    <p>Khung quét kính cơ bản do chính phủ cấp phát.</p>
+                    <button class="buy-btn equipped" id="btn-skin-default" onclick="equipSkin('default')">ĐANG DÙNG</button>
+                </div>
+                <div class="item-card">
+                    <div class="item-img">:</div>
+                    <h3 style="color: #fca5a5;">Neon Lazer</h3>
+                    <p>Viền đỏ rực phát sáng chuẩn phong cách Neon Sign.</p>
+                    <button class="buy-btn" id="btn-skin-neon" onclick="buyOrEquip('neon', 50)">MUA: 50 x</button>
+                </div>
+                <div class="item-card">
+                    <div class="item-img"></div>
+                    <h3 style="color: #06b6d4;">Cyberpunk 2077</h3>
+                    <p>Khung viền công nghệ điện tử Matrix Xanh chớp nháy.</p>
+                    <button class="buy-btn" id="btn-skin-cyber" onclick="buyOrEquip('cyber', 150)">MUA: 150 x</button>
+                </div>
+                <div class="item-card">
+                    <div class="item-img"></div>
+                    <h3 style="color: #fbbf24;">Hoàng Kim Tộc</h3>
+                    <p>Mạ vàng 24k đánh bóng lấp lánh khẳng định độ giàu.</p>
+                    <button class="buy-btn" id="btn-skin-gold" onclick="buyOrEquip('gold', 300)">MUA: 300 x</button>
+                </div>
+                <div class="item-card">
+                    <div class="item-img">:</div>
+                    <h3 style="color: #a855f7;">Đĩa Bay UFO</h3>
+                    <p>Dải sáng màu tím UFO đang hút rác lên không gian.</p>
+                    <button class="buy-btn" id="btn-skin-ufo" onclick="buyOrEquip('ufo', 500)">MUA: 500 x</button>
+                </div>
+                <div class="item-card">
+                    <div class="item-img">🌍</div>
+                    <h3 style="color: #22c55e;">Mẹ Thiên Nhiên</h3>
+                    <p>Khung bảo vệ màu xanh thiên nhiên ngọc bích.</p>
+                    <button class="buy-btn" id="btn-skin-eco" onclick="buyOrEquip('eco', 1000)">MUA: 1000 x</button>
+                </div>
+
+                <!-- ITEM CỦA MINIGAME TRASHQUEST -->
+                <div style="grid-column: 1/-1; padding-top: 20px; text-align: left;">
+                    <h3 style="border-bottom: 2px solid #334155; padding-bottom: 10px; color: #f8fafc;">⚠️ Cứu Môi
+                        Trường (Minigame Items)</h3>
+                </div>
+                <div class="item-card">
+                    <div class="item-img">🧠</div>
+                    <h3 style="color: #94a3b8;">Cung Tái Chế Cán Gỗ</h3>
+                    <p>Mũi tên sát thương +25 đánh quái rác. (+50 Dmg Tổng).</p>
+                    <button class="buy-btn" id="btn-weap-iron" onclick="buyWeapon('iron', 200, 50)">MUA: 200 x</button>
+                </div>
+                <div class="item-card">
+                    <div class="item-img">S</div>
+                    <h3 style="color: #38bdf8;">Nỏ Ánh Sáng Tự Nhiên</h3>
+                    <p>Bắn tên sát thương +75. Xuyên thấu lốc xoáy rác.</p>
+                    <button class="buy-btn" id="btn-weap-diamond" onclick="buyWeapon('diamond', 800, 100)">MUA: 800
+                        x</button>
+                </div>
+                <div class="item-card">
+                    <div class="item-img"></div>
+                    <h3 style="color: #ef4444;">Nước Bù Khoáng (Potion)</h3>
+                    <p>Hồi 50 Máu lập tức trong lúc đánh Boss Rác. (Tối đa 5 bình).</p>
+                    <button class="buy-btn" onclick="buyPotion(50)">MUA: 50 x</button>
+                </div>
+                <!-- 3 ITEM MỚI -->
+                <div class="item-card">
+                    <div class="item-img">🧠</div>
+                    <h3 style="color: #10b981;">Giày Sinh Học</h3>
+                    <p>Giày thể thao nhẹ chế từ vật liệu tái chế. Tăng 40% Tốc chạy.</p>
+                    <button class="buy-btn" id="btn-weap-boots" onclick="buyBoots(300)">MUA: 300 x</button>
+                </div>
+                <div class="item-card">
+                    <div class="item-img">🧠</div>
+                    <h3 style="color: #a855f7;">Găng Tay Nam Châm</h3>
+                    <p>Lực hút điện từ tự động thu thập rác ở cự ly gần.</p>
+                    <button class="buy-btn" id="btn-weap-magnet" onclick="buyMagnet(400)">MUA: 400 x</button>
+                </div>
+                <div class="item-card">
+                    <div class="item-img">🛡️</div>
+                    <h3 style="color: #f59e0b;">Áo Giáp Bã Rau Củ</h3>
+                    <p>Chống chịu sát thương. Tăng Max HP lên 150 và hồi đầy máu.</p>
+                    <button class="buy-btn" id="btn-weap-armor" onclick="buyArmor(500)">MUA: 500 x</button>
+                </div>
+
+                <!-- PHỤ KIỆN TÁI CHẾ / SƯU TẦM -->
+                <div style="grid-column: 1/-1; padding-top: 20px; text-align: left;">
+                    <h3 style="border-bottom: 2px solid #10b981; padding-bottom: 10px; color: #34d399;"> Sản Phẩm Tái
+                        Chế & Phụ Kiện Sưu Tầm</h3>
+                </div>
+                <div class="item-card">
+                    <div class="item-img">🛡️</div>
+                    <h3 style="color: #6ee7b7;">Túi Tote Sinh Thái</h3>
+                    <p>Giảm thiểu túi nilon một lần. Phụ kiện thời trang bền bỉ.</p>
+                    <button class="buy-btn" id="btn-acc-tote" onclick="buyAccessory('tote', 150)">MUA: 150 x</button>
+                </div>
+                <div class="item-card">
+                    <div class="item-img">🌍</div>
+                    <h3 style="color: #a7f3d0;">Bình Giữ Nhiệt Bambu</h3>
+                    <p>Giữ đá lạnh 24h, vỏ tre nứa tự nhiên. Nói không với ly nhựa.</p>
+                    <button class="buy-btn" id="btn-acc-bambu" onclick="buyAccessory('bambu', 250)">MUA: 250 x</button>
+                </div>
+                <div class="item-card">
+                    <div class="item-img">🧠</div>
+                    <h3 style="color: #94a3b8;">Ống Hút Inox 304</h3>
+                    <p>Bộ 3 ống hút inox chống rỉ + cọ rửa. Cứu hộ rùa biển.</p>
+                    <button class="buy-btn" id="btn-acc-metalstraw" onclick="buyAccessory('metalstraw', 100)">MUA: 100
+                        x</button>
+                </div>
+                <div class="item-card">
+                    <div class="item-img">🧠</div>
+                    <h3 style="color: #fca5a5;">Mèo Máy Đồng Hành</h3>
+                    <p>Robot mèo "Eco-Cat" đi theo nhặt rác trong Minigame cùng bạn.</p>
+                    <button class="buy-btn" id="btn-acc-robocat" onclick="buyAccessory('robocat', 1500)">MUA: 1500
+                        x</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SIÊU THỊ SINH THÁI (ECO SHOP MODAL) -->
+    <div class="modal-overlay" id="ecoShopModal">
+        <div class="shop-modal" style="max-width: 900px;">
+            <div class="shop-header">
+                <h2>🏪 Siêu Thị Sinh Thái V2.0</h2>
+                <button class="close-btn" onclick="closeEcoShop()">&times;</button>
+            </div>
+            <p style="text-align: center; color: #94a3b8; margin-bottom: 20px;">Sản phẩm thiết thực từ thiên nhiên và
+                rác tái chế - Mua để nhận BUFF vĩnh viễn!</p>
+            <div class="shop-items">
+                <div class="item-card">
+                    <div class="item-img"></div>
+                    <h3>Sổ Tay Mầm Xanh</h3>
+                    <p>Làm từ 100% giấy tái chế. Tự hào bảo vệ rừng xanh.<br><b>⭐ Buff: +20% XP khi phân loại rác.</b>
+                    </p>
+                    <button class="buy-btn" id="btn-eco-notebook" onclick="buyEcoItem('notebook', 3000)">MUA: 3000
+                        x</button>
+                </div>
+                <div class="item-card">
+                    <div class="item-img">🧠</div>
+                    <h3>Chậu Cây Nhựa</h3>
+                    <p>Tái chế từ chai nhựa HDPE. Máy thu gom tự động.<br><b>⭐ Buff: Tự động cộng +5 Vàng mỗi 10
+                            giây.</b></p>
+                    <button class="buy-btn" id="btn-eco-plant" onclick="buyEcoItem('plant', 5000)">MUA: 5000 x</button>
+                </div>
+                <div class="item-card">
+                    <div class="item-img">🛡️</div>
+                    <h3>Túi Tote Sợi Gai</h3>
+                    <p>May từ quần áo cũ bỏ đi. Thời trang bền chắc.<br><b>⭐ Buff: Giảm 20% sát thương từ Quái Rác.</b>
+                    </p>
+                    <button class="buy-btn" id="btn-eco-tote" onclick="buyEcoItem('tote', 4500)">MUA: 4500 x</button>
+                </div>
+                <div class="item-card">
+                    <div class="item-img"></div>
+                    <h3>Đèn Lồng Lõi Cuộn</h3>
+                    <p>Tận dụng lõi giấy vệ sinh làm đồ decor nghệ thuật.<br><b>⭐ Buff: Gấp đôi (x2) Vàng rơi khi diệt
+                            Quái.</b></p>
+                    <button class="buy-btn" id="btn-eco-lamp" onclick="buyEcoItem('lamp', 6000)">MUA: 6000 x</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ERROR POP-UP MODAL BÁO LỖI -->
+    <div class="error-modal-overlay" id="errorModal">
+        <div class="error-modal-box">
+            <div class="error-icon">❌</div>
+            <div class="error-title">Phân Loại Sai!</div>
+            <div class="error-body" id="errorBodyText">
+                Bạn đã xếp <b id="errTrashName">Rác</b> vào sai vùng.<br><br>
+                Vật phẩm này phải thuộc về thùng rác <b id="errBinName">Tên Thùng</b>!<br>
+                <i style="color: #94a3b8; font-size:1rem; display:block; margin-top:10px;">Lý do: <span
+                        id="errReason">Giải thích</span></i>
+            </div>
+            <button class="btn-understand" onclick="closeErrorModal()">ĐÃ GHI NHỚ</button>
+        </div>
+    </div>
+
+    <!-- HỒ SƠ THÀNH TÍCH (LEADERBOARD / PROFILE MODAL) -->
+    <div class="modal-overlay" id="profileModal">
+        <div class="shop-modal" style="max-width: 450px;">
+            <div class="shop-header">
+                <h2>🏆 Kỷ Lục Cá Nhân</h2>
+                <button class="close-btn" onclick="closeProfile()">&times;</button>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 25px;">
+                <div style="font-size: 5rem; margin-bottom: 10px; filter: drop-shadow(0 0 15px rgba(251, 191, 36, 0.4));"
+                    id="profileSkinIcon">👨‍🚀</div>
+                <h3 style="color: #cbd5e1; font-size: 1.5rem;" id="profileTitle">Tân Binh Sinh Thái</h3>
+                <p style="color: #94a3b8; font-size: 1rem;">Rank: <span id="profileRankLabel"
+                        style="color: #38bdf8; font-weight: bold;">Level 1</span></p>
+            </div>
+
+            <div
+                style="background: rgba(0,0,0,0.3); border-radius: 12px; padding: 15px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 20px;">
+                <div
+                    style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px;">
+                    <span style="color: #94a3b8;">⭐ Tổng Điểm Rác:</span>
+                    <strong style="color: #fff; font-size: 1.1rem;" id="statScore">0</strong>
+                </div>
+                <div
+                    style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px;">
+                    <span style="color: #94a3b8;">🟡 Số Xu Tích Luỹ:</span>
+                    <strong style="color: #fbbf24; font-size: 1.1rem;" id="statCoins">0</strong>
+                </div>
+                <div
+                    style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px;">
+                    <span style="color: #94a3b8;">🔥 Kỷ Lục Combo (Streak):</span>
+                    <strong style="color: #ef4444; font-size: 1.1rem;" id="statStreak">0</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #94a3b8;">⚠️ Ải Minigame Xa Nhất:</span>
+                    <strong style="color: #a855f7; font-size: 1.1rem;" id="statTqLevel">Ải 1</strong>
+                </div>
+            </div>
+
+            <p style="font-size: 0.85rem; color: #64748b; text-align: center; margin-bottom: 15px; font-style: italic;">
+                Dữ liệu được Tự Động Lưu (Auto-Save) liên tục trên trình duyệt này nhờ LocalStorage.
+            </p>
+
+            <button class="buy-btn"
+                style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; font-size: 1rem; padding: 12px;"
+                onclick="resetGameData()">🗑️ XÓA DỮ LIỆU & LÀM LẠI</button>
+        </div>
+    </div>
+
+    <!-- LOGIN MODAL -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="shop-modal" style="max-width: 400px; text-align: center;">
+            <div class="shop-header">
+                <h2>👤 Tài Khoản Offline</h2>
+                <button class="close-btn" onclick="closeLoginModal()">&times;</button>
+            </div>
+            <p style="color: #cbd5e1; margin-bottom: 15px;">Lưu trữ thành tích của bạn trên trình duyệt này.</p>
+            <input type="text" id="usernameInput" placeholder="Nhập tên của bạn..." style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: white; font-size: 1.1rem; margin-bottom: 15px; outline: none; text-align: center;">
+            <button class="buy-btn" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); width: 100%; padding: 12px;" onclick="saveUsername()">LƯU TÊN</button>
+            <p id="currentUserDisplay" style="margin-top: 15px; color: #fbbf24; font-weight: bold;"></p>
+        </div>
+    </div>
+
+    <!-- LEADERBOARD MODAL -->
+    <div class="modal-overlay" id="leaderboardModal">
+        <div class="shop-modal" style="max-width: 500px; text-align: center;">
+            <div class="shop-header">
+                <h2>🏆 Bảng Xếp Hạng</h2>
+                <button class="close-btn" onclick="closeLeaderboardModal()">&times;</button>
+            </div>
+            <div style="background: rgba(0,0,0,0.4); border-radius: 15px; padding: 10px; max-height: 350px; overflow-y: auto;">
+                <table style="width: 100%; text-align: left; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.2); color: #94a3b8;">
+                            <th style="padding: 10px;">Hạng</th>
+                            <th style="padding: 10px;">Người chơi</th>
+                            <th style="padding: 10px;">Điểm số</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody">
+                        <!-- Render by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+
+    
+
+    <!-- AI ECO FLOATING BUTTON -->
+    <button id="recycleAiFab" onclick="toggleRecycleAi()" style="
+        position:fixed;bottom:20px;right:20px;z-index:9999;
+        width:50px;height:50px;border-radius:50%;
+        background:#22c55e;border:1px solid #4ade80;color:white;
+        font-size:22px;cursor:pointer;display:flex;
+        align-items:center;justify-content:center;
+        transition:all .2s;animation:fabPulse 3s infinite;
+    ">🌍</button>
+
+    
+
+    <!-- AI ECO CHAT PANEL -->
+    <div id="recycleAiPanel">
+        <!-- Header -->
+        <div style="
+            background: linear-gradient(135deg, #10b981, #059669);
+            padding: 16px 20px; display: flex; align-items: center; gap: 12px;
+        ">
+            <div
+                style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:22px;">
+                🌍</div>
+            <div style="flex:1;">
+                <div style="font-weight:bold;font-size:1.1rem;color:white;">AI Eco</div>
+                <div style="font-size:0.72rem;color:rgba(255,255,255,0.7);">Trợ lý thông minh đa năng</div>
+            </div>
+            <button onclick="setupApiKey()" title="Cài đặt API Key Gemini" style="
+                width:34px;height:34px;border-radius:50%;border:none;
+                background:rgba(255,255,255,0.15);color:white;font-size:16px;cursor:pointer;
+                display:flex;align-items:center;justify-content:center;transition:background 0.2s;
+            " onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+                onmouseout="this.style.background='rgba(255,255,255,0.15)'">⚙️</button>
+            <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80;"></div>
+        </div>
+
+        <!-- Messages -->
+        <div id="recycleMessages" style="
+            flex: 1; overflow-y: auto; padding: 18px;
+            max-height: 400px; min-height: 200px;
+            scrollbar-width: thin; scrollbar-color: rgba(16,185,129,0.3) transparent;
+        "></div>
+
+        <!-- Input -->
+        <div style="
+            padding: 12px 15px; border-top: 1px solid rgba(255,255,255,0.08);
+            display: flex; gap: 10px; background: rgba(0,0,0,0.2);
+        ">
+            <input id="recycleInput" type="text" placeholder="Hỏi bất cứ điều gì..." style="
+                flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+                border-radius: 25px; padding: 10px 18px; color: #e2e8f0; font-size: 0.9rem;
+                outline: none; transition: border-color 0.2s;
+            " onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='rgba(255,255,255,0.15)'">
+            <button onclick="sendRecycleQuestion()" style="
+                width: 42px; height: 42px; border-radius: 50%;
+                background: linear-gradient(135deg, #10b981, #059669);
+                border: none; color: white; font-size: 1.2rem; cursor: pointer;
+                display: flex; align-items: center; justify-content: center;
+                transition: transform 0.1s;
+            " onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'">➤</button>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+
+</html>
