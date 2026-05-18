@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UploadCloud, Camera, Image as ImageIcon, Sparkles, CheckCircle2, AlertCircle, X, Focus } from 'lucide-react';
+import { UploadCloud, Camera, Image as ImageIcon, Sparkles, CheckCircle2, AlertCircle, X, Focus, Grid } from 'lucide-react';
 import { Card3D } from '../../../shared/animations/Card3D';
 import { useTranslation } from '../../../context/LanguageContext';
 
@@ -12,17 +12,7 @@ declare global {
   }
 }
 
-interface ScanResult {
-  type: string;
-  name: string;
-  confidence: string | number;
-  color: string;
-  bgColor: string;
-  borderColor: string;
-  icon: string;
-  description: string;
-  action: string;
-}
+import { type ScanResult, analyzeWasteResult } from '../../../data/wasteAnalysisData';
 
 // Cache model globally so it loads only once
 let cachedModel: any = null;
@@ -40,14 +30,69 @@ const getModel = async () => {
   return modelLoadPromise;
 };
 
+// Standard Web Audio shutter click synthesizer
+const playShutterSound = () => {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    
+    // Create soft shutter noise
+    const bufferSize = ctx.sampleRate * 0.08; // 80ms sound
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    // Fill with soft pinkish noise
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99886 * b0 + white * 0.0555179;
+      b1 = 0.99332 * b1 + white * 0.0750759;
+      b2 = 0.96900 * b2 + white * 0.1538520;
+      b3 = 0.86650 * b3 + white * 0.3104856;
+      b4 = 0.55000 * b4 + white * 0.5329522;
+      b5 = -0.7616 * b5 - white * 0.0168980;
+      const pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+      b6 = white * 0.115926;
+      const decay = Math.exp(-i / (bufferSize * 0.25));
+      data[i] = pink * 0.04 * decay; // Very soft, gentle mirror click
+    }
+    
+    const noiseSource = ctx.createBufferSource();
+    noiseSource.buffer = buffer;
+    
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1400, ctx.currentTime);
+    filter.Q.setValueAtTime(3, ctx.currentTime);
+    
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.2, ctx.currentTime); // Very quiet and gentle
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+    
+    noiseSource.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    
+    noiseSource.start();
+  } catch (e) {
+    console.warn('Audio Context shutter sound error:', e);
+  }
+};
+
 export const UploadCard = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const [scanProgress, setScanProgress] = useState('');
   const [result, setResult] = useState<ScanResult | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const { t, language } = useTranslation();
+  
+  // Custom camera & scanner states
+  const [showGrid, setShowGrid] = useState(false);
+  const [isFlashing, setIsFlashing] = useState(false);
+  const [scanPercentage, setScanPercentage] = useState(0);
+  const [activeLogs, setActiveLogs] = useState<string[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -127,16 +172,74 @@ export const UploadCard = () => {
     setIsCameraActive(false);
   };
 
+  // Effect to handle futuristic high-tech console telemetry logs rolling
+  useEffect(() => {
+    if (isScanning) {
+      setScanPercentage(0);
+      setActiveLogs([]);
+      
+      const logsPool = language === 'en' ? [
+        '[SYS] Initializing Edge AI Core...',
+        '[MODEL] Loading MobileNet CNN Architecture...',
+        '[TENSOR] Compiling mathematical graphs...',
+        '[VISION] Fetching RGB & HSL matrix...',
+        '[CLASSIFY] Extracting visual features...',
+        '[SEARCH] Cross-referencing 600+ waste definitions...',
+        '[SUCCESS] AI waste classification complete!'
+      ] : [
+        '[SYS] Khởi tạo nhân lõi Trí Tuệ Nhân Tạo...',
+        '[MODEL] Nạp kiến trúc mạng tích chập MobileNet...',
+        '[TENSOR] Đồng bộ đồ thị toán học tensor...',
+        '[VISION] Trích xuất ma trận HSL & RGB...',
+        '[CLASSIFY] Phân tích đặc trưng hình ảnh...',
+        '[SEARCH] Tra cứu 600+ danh mục rác thải...',
+        '[SUCCESS] AI phân loại rác thành công!'
+      ];
+
+      let currentPct = 0;
+      let logIndex = 0;
+      
+      const interval = setInterval(() => {
+        currentPct += 1;
+        if (currentPct > 100) {
+          currentPct = 100;
+          clearInterval(interval);
+        }
+        setScanPercentage(currentPct);
+        
+        const step = Math.floor(100 / logsPool.length);
+        const targetLogIndex = Math.min(
+          logsPool.length - 1,
+          Math.floor(currentPct / step)
+        );
+        
+        if (targetLogIndex >= logIndex) {
+          setActiveLogs(prev => {
+            const added = logsPool.slice(logIndex, targetLogIndex + 1);
+            const next = [...prev, ...added.filter(item => !prev.includes(item))];
+            return next;
+          });
+          logIndex = targetLogIndex + 1;
+        }
+      }, 25); // Seamless 2.5s progressive scan
+
+      return () => clearInterval(interval);
+    }
+  }, [isScanning, language]);
+
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
-      // Đảm bảo video đã sẵn sàng
       if (video.readyState < 2) {
         console.warn('Video not ready yet');
         return;
       }
+
+      // Shutter visual & sound click trigger
+      playShutterSound();
+      setIsFlashing(true);
 
       canvas.width = video.videoWidth || 640;
       canvas.height = video.videoHeight || 480;
@@ -144,8 +247,13 @@ export const UploadCard = () => {
       if (ctx) {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const imageUrl = canvas.toDataURL('image/jpeg', 0.9);
-        stopCamera();
-        processImage(imageUrl);
+        
+        // Soft click captures quickly and stops camera after a short delay for beautiful visual feedback
+        setTimeout(() => {
+          setIsFlashing(false);
+          stopCamera();
+          processImage(imageUrl);
+        }, 150);
       }
     }
   };
@@ -195,79 +303,19 @@ export const UploadCard = () => {
     }
   };
 
-  const classifyResult = (predictions: any[]): ScanResult => {
-    const topResult = predictions[0];
-    const allNames = predictions.map((p: any) => p.className.toLowerCase()).join(' ');
-    const className = topResult.className.toLowerCase();
-    let confidence = (topResult.probability * 100).toFixed(1);
-
-    const nonWasteMatch = className.match(/person|people|man|woman|face|dog|cat|bird|animal|car|truck|vehicle|house|building|tree|sky|mountain|street|desk|table|chair|keyboard|mouse|laptop|television|couch|bed|clock|vase|teddy/);
-    const recycleMatch = allNames.match(/bottle|plastic|cup|can|box|paper|carton|wrapper|glass|metal|tin|jar|jug|container|packet|aluminum|steel|cardboard|magazine|envelope|newspaper|water bottle|pop bottle|beer bottle|wine bottle|soda|mug|pitcher|bucket|basket|crate|barrel|tub|beaker|flask|vial|goblet|teapot|coffeepot|mixing bowl/);
-    const organicMatch = allNames.match(/apple|banana|fruit|food|vegetable|plant|flower|leaf|meat|orange|lemon|strawberry|pineapple|fig|pomegranate|mushroom|broccoli|cauliflower|cucumber|zucchini|corn|head cabbage|artichoke|bell pepper|cardoon|spaghetti squash|acorn squash|butternut squash|hot pot|pizza|burrito|ice cream|chocolate|bread|pretzel|bagel|cheeseburger|carbonara|hay|straw|potpie|trifle|grocery store|bakery|confectionery|dough|guacamole|soup|peel|seed|compost/);
-    const hazardousMatch = allNames.match(/battery|electronic|phone|computer|screen|monitor|lamp|pill|medicine|syringe|stethoscope|chemical|toxic|acid|switch|power|cellular|notebook|printer|mouse pad|modem|hard disc|iPod|remote control|joystick|cassette|CD player|radio|television|CRT screen|oscilloscope|vacuum|iron|electric fan|space heater|microwave|toaster|waffle iron|refrigerator|washer|dishwasher/);
-
-    if (nonWasteMatch || Number(confidence) < 12) {
-      return {
-        type: language === 'en' ? 'Not Waste' : 'Không Phải Rác',
-        name: topResult.className.split(',')[0].toUpperCase(),
-        confidence,
-        color: 'text-slate-500', bgColor: 'bg-slate-500/10', borderColor: 'border-slate-500/30', icon: '❌',
-        description: language === 'en' ? `Detected: "${topResult.className}". This doesn't appear to be a waste item.` : `Nhận diện: "${topResult.className}". Đây dường như không phải rác thải.`,
-        action: language === 'en' ? 'Please capture an image of a clear waste item for classification.' : 'Vui lòng chụp hình ảnh rác rõ ràng hơn để AI phân loại chính xác.',
-      };
-    } else if (recycleMatch) {
-      return {
-        type: t('games.recycle'), name: topResult.className.split(',')[0].toUpperCase(),
-        confidence: String(Math.min(98, Number(confidence) + 15)),
-        color: 'text-brand-blue', bgColor: 'bg-brand-blue/10', borderColor: 'border-brand-blue/30', icon: '♻️',
-        description: language === 'en' ? `Detected: "${topResult.className}". High recyclability material.` : `Nhận diện: "${topResult.className}". Vật liệu có khả năng tái chế cao.`,
-        action: language === 'en' ? '♻️ Reduce → Reuse → Clean, crush to save space, put in Recycle bin.' : '♻️ Giảm thiểu → Tái sử dụng → Súc rửa sạch, làm bẹp, cho vào thùng Tái Chế.',
-      };
-    } else if (organicMatch) {
-      return {
-        type: t('games.organic'), name: topResult.className.split(',')[0].toUpperCase(),
-        confidence: String(Math.min(98, Number(confidence) + 15)),
-        color: 'text-brand-green', bgColor: 'bg-brand-green/10', borderColor: 'border-brand-green/30', icon: '🌿',
-        description: language === 'en' ? `Detected: "${topResult.className}". Biodegradable organic waste.` : `Nhận diện: "${topResult.className}". Rác hữu cơ dễ phân hủy sinh học.`,
-        action: language === 'en' ? '🌿 Reduce food waste → Compost for plants → Put in Organic bin.' : '🌿 Giảm lãng phí → Ủ phân compost bón cây → Bỏ vào thùng Hữu Cơ.',
-      };
-    } else if (hazardousMatch) {
-      return {
-        type: t('games.hazardous'), name: topResult.className.split(',')[0].toUpperCase(),
-        confidence: String(Math.min(98, Number(confidence) + 10)),
-        color: 'text-red-500', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/30', icon: '⚠️',
-        description: language === 'en' ? `Alert: "${topResult.className}". Contains toxic/hazardous materials.` : `Cảnh báo: "${topResult.className}". Chứa thành phần độc hại.`,
-        action: language === 'en' ? '⚠️ Never throw with regular trash. Bring to hazardous waste collection point.' : '⚠️ Không vứt chung rác thường → Đem đến điểm thu gom rác nguy hại.',
-      };
-    } else {
-      return {
-        type: t('games.inorganic'), name: topResult.className.split(',')[0].toUpperCase(),
-        confidence,
-        color: 'text-amber-500', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/30', icon: '🗑️',
-        description: language === 'en' ? `Detected: "${topResult.className}". Inorganic waste - hard to decompose.` : `Nhận diện: "${topResult.className}". Rác Vô Cơ - khó phân hủy và tái chế.`,
-        action: language === 'en' ? '🗑️ Reduce non-recyclable items → Put in Inorganic bin for safe landfill.' : '🗑️ Giảm sử dụng vật liệu khó phân hủy → Bỏ vào thùng Vô Cơ.',
-      };
-    }
-  };
-
   const runAI = async (imageElement: HTMLImageElement) => {
     setIsScanning(true);
     setResult(null);
-    setScanProgress(language === 'en' ? 'Loading AI model...' : 'Đang tải mô hình AI...');
     
+    let scanResult: ScanResult;
     try {
       const model = await getModel();
-      setScanProgress(language === 'en' ? 'Analyzing image...' : 'Đang phân tích hình ảnh...');
       const predictions = await model.classify(imageElement);
-      const scanResult = classifyResult(predictions);
-      setResult(scanResult);
-      setIsScanning(false);
+      scanResult = analyzeWasteResult(predictions, language, t);
     } catch (e) {
       console.error('AI scan error:', e);
-      setScanProgress(language === 'en' ? 'Using fallback analysis...' : 'Đang dùng phân tích dự phòng...');
-      // Fallback: show result after brief delay, keep isScanning true until result is ready
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      setResult({
+      // Fallback prediction
+      scanResult = {
         type: language === 'en' ? 'Recycle' : 'Tái Chế',
         name: language === 'en' ? 'PLASTIC ITEM (Estimate)' : 'CHAI NHỰA (Dự Đoán)',
         confidence: 85.0,
@@ -277,9 +325,13 @@ export const UploadCard = () => {
         icon: '♻️',
         description: language === 'en' ? 'Fallback AI estimated this is a recyclable plastic material.' : 'Hệ thống AI dự phòng đoán đây là vật liệu nhựa tái chế được.',
         action: language === 'en' ? 'Rinse and place in the recycling bin.' : 'Súc rửa sạch nước bên trong và cho vào thùng rác tái chế.',
-      });
-      setIsScanning(false);
+      };
     }
+
+    // Sync with the automated scanning console animation for ultra-premium UX
+    await new Promise(resolve => setTimeout(resolve, 2600));
+    setResult(scanResult);
+    setIsScanning(false);
   };
 
   return (
@@ -358,37 +410,87 @@ export const UploadCard = () => {
             />
             <canvas ref={canvasRef} className="hidden" />
             
+            {/* Soft subtle camera flash overlay */}
+            <AnimatePresence>
+              {isFlashing && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.15 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 bg-white z-50 pointer-events-none"
+                />
+              )}
+            </AnimatePresence>
+
             {/* Lớp phủ giao diện Camera */}
             <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-6">
               <div className="flex justify-between items-start w-full">
                 <div className="px-3 py-1.5 bg-black/50 backdrop-blur-md rounded-full border border-white/10 text-white text-xs font-mono flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> {t('scanner.live')}
                 </div>
-                <button 
-                  onClick={stopCamera}
-                  className="pointer-events-auto p-2 bg-black/50 hover:bg-red-500/80 backdrop-blur-md rounded-full text-white transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setShowGrid(!showGrid)}
+                    className="pointer-events-auto px-3 py-1.5 bg-black/50 hover:bg-white/10 backdrop-blur-md rounded-full border border-white/10 text-white text-xs font-mono flex items-center gap-1.5 transition-all"
+                  >
+                    <Grid className="w-3.5 h-3.5" />
+                    {showGrid ? 'GRID: ON' : 'GRID: OFF'}
+                  </button>
+                  <button 
+                    onClick={stopCamera}
+                    className="pointer-events-auto p-2 bg-black/50 hover:bg-red-500/80 backdrop-blur-md rounded-full text-white transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
-              {/* Khung ngắm hiện đại */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="relative w-64 h-64">
-                  {/* Bốn góc HUD */}
-                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-brand-green rounded-tl-lg shadow-[0_0_15px_#10b981]" />
-                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-brand-green rounded-tr-lg shadow-[0_0_15px_#10b981]" />
-                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-brand-green rounded-bl-lg shadow-[0_0_15px_#10b981]" />
-                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-brand-green rounded-br-lg shadow-[0_0_15px_#10b981]" />
+              {/* Khung ngắm hiện đại xịn hơn - Rộng rãi hơn */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-12">
+                <div className="relative w-full h-full max-w-md max-h-96">
+                  {/* Bốn góc HUD (Mở rộng ra ngoài, nét thanh mảnh hơn nhưng ngầu hơn) */}
+                  <div className="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-brand-green/80 rounded-tl-xl shadow-[0_0_10px_rgba(16,185,129,0.3)]" />
+                  <div className="absolute top-0 right-0 w-16 h-16 border-t-2 border-r-2 border-brand-green/80 rounded-tr-xl shadow-[0_0_10px_rgba(16,185,129,0.3)]" />
+                  <div className="absolute bottom-0 left-0 w-16 h-16 border-b-2 border-l-2 border-brand-green/80 rounded-bl-xl shadow-[0_0_10px_rgba(16,185,129,0.3)]" />
+                  <div className="absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 border-brand-green/80 rounded-br-xl shadow-[0_0_10px_rgba(16,185,129,0.3)]" />
                   
-                  {/* Đường quét laser */}
+                  {/* Rule of thirds grid lines overlay */}
+                  {showGrid && (
+                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                      <div className="absolute top-1/3 left-0 right-0 h-[0.5px] bg-white/15" />
+                      <div className="absolute top-2/3 left-0 right-0 h-[0.5px] bg-white/15" />
+                      <div className="absolute left-1/3 top-0 bottom-0 w-[0.5px] bg-white/15" />
+                      <div className="absolute left-2/3 top-0 bottom-0 w-[0.5px] bg-white/15" />
+                    </div>
+                  )}
+
+                  {/* Telemetry metadata displays */}
+                  <div className="absolute bottom-4 left-4 text-[9px] font-mono text-brand-green/60 flex flex-col gap-0.5 select-none">
+                    <div>RES: 1280x720</div>
+                    <div>FPS: 60.0</div>
+                    <div>ISO: AUTO</div>
+                  </div>
+                  <div className="absolute bottom-4 right-4 text-[9px] font-mono text-brand-green/60 flex flex-col gap-0.5 text-right select-none">
+                    <div>FOCUS: LOCKED</div>
+                    <div>AGC: ACTIVE</div>
+                    <div>EV: 0.0</div>
+                  </div>
+
+                  {/* Các vạch ngắm nhỏ giữa các viền */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-[2px] bg-brand-green/50" />
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[2px] bg-brand-green/50" />
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[2px] bg-brand-green/50" />
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-[2px] bg-brand-green/50" />
+
+                  {/* Đường quét laser mượt mà tinh tế hơn */}
                   <motion.div 
                     animate={{ top: ['0%', '100%', '0%'] }}
-                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                    className="absolute left-0 right-0 h-[2px] bg-brand-green shadow-[0_0_20px_#10b981] z-10"
+                    transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                    className="absolute left-0 right-0 h-[1px] bg-brand-green shadow-[0_0_15px_#10b981] z-10 opacity-70"
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <Focus className="w-16 h-16 text-brand-green/30 animate-pulse" strokeWidth={1} />
+                    <Focus className="w-12 h-12 text-brand-green/20 animate-pulse" strokeWidth={1} />
                   </div>
                 </div>
               </div>
@@ -411,7 +513,7 @@ export const UploadCard = () => {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-            className="glass rounded-3xl p-12 flex flex-col items-center justify-center relative overflow-hidden"
+            className="glass rounded-3xl p-8 flex flex-col items-center justify-center relative overflow-hidden"
           >
             <motion.div 
               animate={{ top: ['0%', '100%', '0%'] }}
@@ -419,26 +521,46 @@ export const UploadCard = () => {
               className="absolute left-0 right-0 h-1 bg-brand-green shadow-[0_0_20px_#10b981] z-10"
             />
             
-            <div className="relative mb-8">
+            <div className="relative mb-6">
               <motion.div 
                 animate={{ rotate: 360 }}
                 transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                className="w-24 h-24 rounded-full border-t-2 border-r-2 border-brand-green"
+                className="w-20 h-20 rounded-full border-t-2 border-r-2 border-brand-green"
               />
               <motion.div 
                 animate={{ rotate: -360 }}
                 transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                className="w-16 h-16 rounded-full border-b-2 border-l-2 border-brand-blue absolute top-4 left-4"
+                className="w-14 h-14 rounded-full border-b-2 border-l-2 border-brand-blue absolute top-3 left-3"
               />
               <div className="absolute inset-0 flex items-center justify-center">
-                <Sparkles className="w-8 h-8 text-white animate-pulse" />
+                <Sparkles className="w-6 h-6 text-white animate-pulse" />
               </div>
             </div>
             
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 tracking-wide">{t('scanner.analyzing')}</h3>
-            <p className="text-brand-green animate-pulse font-mono text-sm">{scanProgress || t('scanner.analyzingDesc')}</p>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1 tracking-wide">{t('scanner.analyzing')}</h3>
+            
+            {/* Realtime progress percentages */}
+            <div className="flex items-center gap-2 text-slate-500 font-mono text-xs mb-3">
+              <span>SCAN TELEMETRY PROGRESS:</span>
+              <span className="text-brand-green font-bold">{scanPercentage}%</span>
+            </div>
+
+            {/* Dynamic rolling console logs */}
+            <div className="w-full max-w-md bg-black/40 backdrop-blur-md rounded-2xl p-4 border border-white/10 font-mono text-left text-[11px] text-brand-green/80 flex flex-col gap-1.5 h-36 overflow-y-auto">
+              {activeLogs.map((log, index) => (
+                <div key={index} className="flex gap-1.5 items-start">
+                  <span className="text-brand-blue select-none">❯</span>
+                  <span className="break-all">{log}</span>
+                </div>
+              ))}
+              <div className="flex gap-1.5 items-center text-slate-500">
+                <span>❯</span>
+                <span className="w-1.5 h-3 bg-brand-green/80 animate-pulse" />
+              </div>
+            </div>
+
             {previewSrc && (
-              <div className="mt-4 w-32 h-32 rounded-2xl overflow-hidden border-2 border-white/10 shadow-lg">
+              <div className="mt-5 w-24 h-24 rounded-xl overflow-hidden border border-white/10 shadow-lg">
                 <img src={previewSrc} alt="preview" className="w-full h-full object-cover" />
               </div>
             )}

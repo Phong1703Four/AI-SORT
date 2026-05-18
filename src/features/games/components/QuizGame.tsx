@@ -134,7 +134,7 @@ export const QuizGame = ({ setInventory }: QuizGameProps) => {
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 shrink-0">
-            {currentQ.options.map((option: {en: string, vi: string}, idx: number) => {
+            {currentQ.options.map((option, idx) => {
               const isSelected = selectedOption === idx;
               const isCorrect = idx === currentQ.correctIndex;
               

@@ -44,7 +44,7 @@ export const ClassicGame = ({ setInventory }: ClassicGameProps) => {
   }, [items]);
 
   const handleBinSelect = (binId: string) => {
-    if (errorModal || feedback) return;
+    if (!currentItem || errorModal || feedback) return;
 
     if (currentItem.type === binId) {
       // Đúng
