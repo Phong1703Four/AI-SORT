@@ -9,6 +9,7 @@ import { EcoChallenges } from './features/dashboard/components/EcoChallenges';
 
 import { GamesHub } from './features/games/components/GamesHub';
 import { EcoShop } from './features/shop/components/EcoShop';
+import { EcoLibrary } from './features/education/components/EcoLibrary';
 import { useTranslation } from './context/LanguageContext';
 
 export interface Inventory {
@@ -117,11 +118,9 @@ function App() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
               transition={{ duration: 0.4 }}
-              className="w-full flex-1 flex flex-col items-center justify-center text-slate-400 text-center"
+              className="w-full flex-1 flex flex-col"
             >
-              <div className="text-6xl mb-4">📚</div>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{t('dashboard.library')}</h2>
-              <p className="text-slate-600 dark:text-slate-400">{t('dashboard.libraryDesc')}</p>
+              <EcoLibrary />
             </motion.div>
           )}
         </AnimatePresence>
